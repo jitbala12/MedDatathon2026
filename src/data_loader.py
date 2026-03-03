@@ -1,5 +1,5 @@
 import pandas as pd
-from config import DATA_PATH
+from .config import DATA_PATH
 
 def load_wdbc():
     df = pd.read_csv(DATA_PATH, header=None)
