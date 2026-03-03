@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import GridSearchCV
 
 from .config import RANDOM_STATE, TEST_SIZE, N_SPLITS
 from .data_loader import load_wdbc
@@ -68,8 +69,8 @@ def build_pipelines() -> Dict[str, Pipeline]:
             steps=[
                 ("scaler", StandardScaler()),
                 ("model", LogisticRegression(
-                    penalty="l1",
-                    solver="liblinear",
+                    l1_ratio=1,
+                    solver="saga",
                     max_iter=5000,
                     random_state=RANDOM_STATE,
                 )),
@@ -111,6 +112,29 @@ def main() -> None:
     print("CV folds:", cv.get_n_splits())
 
     # training goes here
+
+    #LogReg Training:
+    logreg_pipeline = pipelines["logreg_l1"]
+
+    # Hyperparameter grid
+    param_grid = {
+        "model__C": [0.01, 0.1, 1, 10, 100]
+    }
+
+    # Grid search using YOUR cv strategy
+    grid = GridSearchCV(
+        estimator=logreg_pipeline,
+        param_grid=param_grid,
+        cv=cv,                     # <- use your function
+        scoring="roc_auc",
+        n_jobs=-1
+    )
+
+    # Train
+    grid.fit(split.X_train, split.y_train)
+
+    print("Best params:", grid.best_params_)
+    print("Best CV AUC:", grid.best_score_)
 
 
 if __name__ == "__main__":
