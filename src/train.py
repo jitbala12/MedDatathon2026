@@ -16,6 +16,7 @@ from sklearn.model_selection import GridSearchCV
 
 from .config import RANDOM_STATE, TEST_SIZE, N_SPLITS
 from .data_loader import load_wdbc
+from .evaluate import evaluate_model, print_confusion
 
 
 @dataclass(frozen=True)
@@ -125,7 +126,7 @@ def main() -> None:
     grid = GridSearchCV(
         estimator=logreg_pipeline,
         param_grid=param_grid,
-        cv=cv,                     # <- use your function
+        cv=cv,                     
         scoring="roc_auc",
         n_jobs=-1
     )
@@ -135,6 +136,16 @@ def main() -> None:
 
     print("Best params:", grid.best_params_)
     print("Best CV AUC:", grid.best_score_)
+
+    best_model = grid.best_estimator_
+    
+    results = evaluate_model(best_model, split.X_test, split.y_test)
+
+    print("Test Results:")
+    for k, v in results.items():
+        print(f"{k}: {v:.4f}")
+
+    print_confusion(best_model, split.X_test, split.y_test)
 
 
 if __name__ == "__main__":
