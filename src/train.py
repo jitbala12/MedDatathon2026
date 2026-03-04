@@ -147,6 +147,45 @@ def main() -> None:
 
     print_confusion(best_model, split.X_test, split.y_test)
 
+    #-------------------
+    # SVM Training
+    svm_pipeline = pipelines["svm_rbf"]
+
+    # Hyperparameter grid
+    svm_param_grid = {
+        "model__C": [0.1, 1, 10, 100],
+        "model__gamma": ["scale", 0.01, 0.001]
+    }
+
+    svm_grid = GridSearchCV(
+        estimator=svm_pipeline,
+        param_grid=svm_param_grid,
+        cv=cv,
+        scoring="roc_auc",
+        n_jobs=-1
+    )
+
+    # Train
+    svm_grid.fit(split.X_train, split.y_train)
+
+    print("\nSVM Best params:", svm_grid.best_params_)
+    print("SVM Best CV AUC:", svm_grid.best_score_)
+
+    best_svm_model = svm_grid.best_estimator_
+
+    # Evaluate
+    svm_results = evaluate_model(best_svm_model, split.X_test, split.y_test)
+
+    print("SVM Test Results:")
+    for k, v in svm_results.items():
+        print(f"{k}: {v:.4f}")
+
+    print_confusion(best_svm_model, split.X_test, split.y_test)
+    #-------------------
+
+
+
+
 
 if __name__ == "__main__":
     main()
