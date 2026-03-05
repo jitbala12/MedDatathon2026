@@ -13,6 +13,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+
 
 from .config import RANDOM_STATE, TEST_SIZE, N_SPLITS
 from .data_loader import load_wdbc
@@ -87,12 +89,11 @@ def build_pipelines() -> Dict[str, Pipeline]:
                 )),
             ]
         ),
-        "mlp": Pipeline(
+        "rf": Pipeline(
             steps=[
-                ("scaler", StandardScaler()),
-                ("model", MLPClassifier(
-                    max_iter=3000,
-                    random_state=RANDOM_STATE,
+                ("model", RandomForestClassifier(
+                random_state=RANDOM_STATE,
+                n_jobs=-1
                 )),
             ]
         ),
@@ -183,6 +184,43 @@ def main() -> None:
     print_confusion(best_svm_model, split.X_test, split.y_test)
     #-------------------
 
+    # ------------------------------
+    # Random Forest Training
+
+    rf_pipeline = pipelines["rf"]
+
+    # Hyperparameter grid
+    rf_param_grid = {
+        "model__n_estimators": [100, 200, 500],
+        "model__max_depth": [None, 5, 10],
+        "model__min_samples_split": [2, 5]
+    }
+
+    rf_grid = GridSearchCV(
+        estimator=rf_pipeline,
+        param_grid=rf_param_grid,
+        cv=cv,
+        scoring="roc_auc",
+        n_jobs=-1
+    )
+
+    # Train
+    rf_grid.fit(split.X_train, split.y_train)
+
+    print("\nRF Best params:", rf_grid.best_params_)
+    print("RF Best CV AUC:", rf_grid.best_score_)
+
+    best_rf_model = rf_grid.best_estimator_
+
+    # Evaluate
+    rf_results = evaluate_model(best_rf_model, split.X_test, split.y_test)
+
+    print("RF Test Results:")
+    for k, v in rf_results.items():
+        print(f"{k}: {v:.4f}")
+
+    print_confusion(best_rf_model, split.X_test, split.y_test)
+    # ------------------------------
 
 
 
