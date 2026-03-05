@@ -3,22 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Tuple
 
+import joblib
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
 
 
-from .config import RANDOM_STATE, TEST_SIZE, N_SPLITS
+from .config import N_SPLITS, RANDOM_STATE, TEST_SIZE
 from .data_loader import load_wdbc
 from .evaluate import evaluate_model, print_confusion
+
+
+MODELS_DIR = Path("models")
 
 
 @dataclass(frozen=True)
@@ -164,17 +168,27 @@ def main() -> None:
         best_model = grid.best_estimator_
 
         # Evaluate
-        results = evaluate_model(best_model,
-                                 split.X_test,
-                                 split.y_test)
+        results = evaluate_model(
+            best_model,
+            split.X_test,
+            split.y_test,
+        )
 
         print("Test Results:")
         for metric, value in results.items():
             print(f"{metric}: {value:.4f}")
 
-        print_confusion(best_model,
-                        split.X_test,
-                        split.y_test)
+        print_confusion(
+            best_model,
+            split.X_test,
+            split.y_test,
+        )
+
+        # Persist best model so it can be used later (e.g. in Streamlit app)
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        model_path = MODELS_DIR / f"best_{model_name}.joblib"
+        joblib.dump(best_model, model_path)
+        print(f"Saved best model to {model_path}")
 
 
 if __name__ == "__main__":
