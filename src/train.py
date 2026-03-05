@@ -8,6 +8,8 @@ from typing import Dict, Tuple
 
 import joblib
 import numpy as np
+import pandas as pd
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
@@ -15,6 +17,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+
 
 
 from .config import N_SPLITS, RANDOM_STATE, TEST_SIZE
@@ -145,6 +148,7 @@ def main() -> None:
     # -----------------------------
     # Training Loop
     # -----------------------------
+    results_list = []
     for model_name, pipeline in pipelines.items():
 
         print("\n" + "=" * 40)
@@ -173,6 +177,16 @@ def main() -> None:
             split.X_test,
             split.y_test,
         )
+        
+        # Appending the results to the result list
+        results_list.append({
+            "Model": model_name,
+            "Accuracy": results["accuracy"],
+            "Precision": results["precision"],
+            "Recall": results["recall"],
+            "F1": results["f1"],
+            "AUC": results["auc"],
+        })
 
         print("Test Results:")
         for metric, value in results.items():
@@ -189,6 +203,11 @@ def main() -> None:
         model_path = MODELS_DIR / f"best_{model_name}.joblib"
         joblib.dump(best_model, model_path)
         print(f"Saved best model to {model_path}")
+
+    results_df = pd.DataFrame(results_list)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    results_df.to_csv(MODELS_DIR / "model_metrics.csv", index=False)
+    print("Saved model metrics to models/model_metrics.csv")
 
 
 if __name__ == "__main__":
