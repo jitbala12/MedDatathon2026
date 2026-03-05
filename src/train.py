@@ -106,123 +106,75 @@ def main() -> None:
     cv = make_cv()
     pipelines = build_pipelines()
 
-    # print values
-    print("Train shape:", split.X_train.shape, "Test shape:", split.X_test.shape)
-    print("Train class counts:", dict(zip(*np.unique(split.y_train, return_counts=True))))
-    print("Test class counts:", dict(zip(*np.unique(split.y_test, return_counts=True))))
+    # -----------------------------
+    # Dataset Info
+    # -----------------------------
+    print("Train shape:", split.X_train.shape,
+          "Test shape:", split.X_test.shape)
+
+    print("Train class counts:",
+          dict(zip(*np.unique(split.y_train, return_counts=True))))
+    print("Test class counts:",
+          dict(zip(*np.unique(split.y_test, return_counts=True))))
+
     print("Pipelines:", list(pipelines.keys()))
     print("CV folds:", cv.get_n_splits())
 
-    # training goes here
-
-    #LogReg Training:
-    logreg_pipeline = pipelines["logreg_l1"]
-
-    # Hyperparameter grid
-    param_grid = {
-        "model__C": [0.01, 0.1, 1, 10, 100]
+    # -----------------------------
+    # Hyperparameter Grids
+    # -----------------------------
+    param_grids = {
+        "logreg_l1": {
+            "model__C": [0.01, 0.1, 1, 10, 100]
+        },
+        "svm_rbf": {
+            "model__C": [0.1, 1, 10, 100],
+            "model__gamma": ["scale", 0.01, 0.001]
+        },
+        "rf": {
+            "model__n_estimators": [100, 200, 500],
+            "model__max_depth": [None, 5, 10],
+            "model__min_samples_split": [2, 5]
+        }
     }
 
-    # Grid search using YOUR cv strategy
-    grid = GridSearchCV(
-        estimator=logreg_pipeline,
-        param_grid=param_grid,
-        cv=cv,                     
-        scoring="roc_auc",
-        n_jobs=-1
-    )
+    # -----------------------------
+    # Training Loop
+    # -----------------------------
+    for model_name, pipeline in pipelines.items():
 
-    # Train
-    grid.fit(split.X_train, split.y_train)
+        print("\n" + "=" * 40)
+        print(f"Training model: {model_name}")
+        print("=" * 40)
 
-    print("Best params:", grid.best_params_)
-    print("Best CV AUC:", grid.best_score_)
+        grid = GridSearchCV(
+            estimator=pipeline,
+            param_grid=param_grids[model_name],
+            cv=cv,
+            scoring="roc_auc",
+            n_jobs=-1
+        )
 
-    best_model = grid.best_estimator_
-    
-    results = evaluate_model(best_model, split.X_test, split.y_test)
+        # Train
+        grid.fit(split.X_train, split.y_train)
 
-    print("Test Results:")
-    for k, v in results.items():
-        print(f"{k}: {v:.4f}")
+        print("Best params:", grid.best_params_)
+        print("Best CV AUC:", grid.best_score_)
 
-    print_confusion(best_model, split.X_test, split.y_test)
+        best_model = grid.best_estimator_
 
-    #-------------------
-    # SVM Training
-    svm_pipeline = pipelines["svm_rbf"]
+        # Evaluate
+        results = evaluate_model(best_model,
+                                 split.X_test,
+                                 split.y_test)
 
-    # Hyperparameter grid
-    svm_param_grid = {
-        "model__C": [0.1, 1, 10, 100],
-        "model__gamma": ["scale", 0.01, 0.001]
-    }
+        print("Test Results:")
+        for metric, value in results.items():
+            print(f"{metric}: {value:.4f}")
 
-    svm_grid = GridSearchCV(
-        estimator=svm_pipeline,
-        param_grid=svm_param_grid,
-        cv=cv,
-        scoring="roc_auc",
-        n_jobs=-1
-    )
-
-    # Train
-    svm_grid.fit(split.X_train, split.y_train)
-
-    print("\nSVM Best params:", svm_grid.best_params_)
-    print("SVM Best CV AUC:", svm_grid.best_score_)
-
-    best_svm_model = svm_grid.best_estimator_
-
-    # Evaluate
-    svm_results = evaluate_model(best_svm_model, split.X_test, split.y_test)
-
-    print("SVM Test Results:")
-    for k, v in svm_results.items():
-        print(f"{k}: {v:.4f}")
-
-    print_confusion(best_svm_model, split.X_test, split.y_test)
-    #-------------------
-
-    # ------------------------------
-    # Random Forest Training
-
-    rf_pipeline = pipelines["rf"]
-
-    # Hyperparameter grid
-    rf_param_grid = {
-        "model__n_estimators": [100, 200, 500],
-        "model__max_depth": [None, 5, 10],
-        "model__min_samples_split": [2, 5]
-    }
-
-    rf_grid = GridSearchCV(
-        estimator=rf_pipeline,
-        param_grid=rf_param_grid,
-        cv=cv,
-        scoring="roc_auc",
-        n_jobs=-1
-    )
-
-    # Train
-    rf_grid.fit(split.X_train, split.y_train)
-
-    print("\nRF Best params:", rf_grid.best_params_)
-    print("RF Best CV AUC:", rf_grid.best_score_)
-
-    best_rf_model = rf_grid.best_estimator_
-
-    # Evaluate
-    rf_results = evaluate_model(best_rf_model, split.X_test, split.y_test)
-
-    print("RF Test Results:")
-    for k, v in rf_results.items():
-        print(f"{k}: {v:.4f}")
-
-    print_confusion(best_rf_model, split.X_test, split.y_test)
-    # ------------------------------
-
-
+        print_confusion(best_model,
+                        split.X_test,
+                        split.y_test)
 
 
 if __name__ == "__main__":
