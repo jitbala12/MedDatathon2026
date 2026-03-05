@@ -64,10 +64,9 @@ def load_model(model_label):
 
 def show_about():
 
-    st.title("Breast Cancer Diagnosis Prediction")
+    st.subheader("About this app")
 
     st.markdown("""
-### Project Overview
 This application predicts whether a breast tumor is **benign or malignant**
 using machine learning models trained on the **Wisconsin Diagnostic Breast Cancer (WDBC)** dataset.
 
@@ -170,17 +169,16 @@ def show_prediction(prob, pred):
 
 def show_metrics():
 
-    st.header("Model Performance")
-
     metrics_path = Path("models/model_metrics.csv")
 
     if metrics_path.exists():
         results = pd.read_csv(metrics_path)
-        st.dataframe(results, use_container_width=True)
     else:
         st.warning("Model metrics not found. Run training first.")
 
-    st.dataframe(results, use_container_width=True)
+    if metrics_path.exists():
+        st.subheader("Model performance (cross-validation)")
+        st.dataframe(results, use_container_width=True)
 
 
 # ---------------------------------------------------
@@ -198,11 +196,20 @@ def show_confusion(model, df):
 
     fig, ax = plt.subplots()
 
-    ax.imshow(cm)
-
+    im = ax.imshow(cm, cmap="Blues")
     ax.set_title("Confusion Matrix")
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Actual")
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(["Benign", "Malignant"])
+    ax.set_yticklabels(["Benign", "Malignant"])
+
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, cm[i, j], ha="center", va="center", color="black")
+
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
     st.pyplot(fig)
 
@@ -212,8 +219,6 @@ def show_confusion(model, df):
 # ---------------------------------------------------
 
 def show_roc(df):
-
-    st.header("ROC Curve Comparison")
 
     X = df[WDBC_FEATURE_NAMES].values
     y = df["diagnosis"].values
@@ -250,7 +255,11 @@ def main():
 
     df = load_dataset()
 
-    show_about()
+    st.title("Breast Cancer Diagnosis")
+    st.markdown(
+        "Use the controls in the sidebar to select a model and enter tumor measurements, "
+        "then run a **diagnosis test**. Detailed model and data views are available below."
+    )
 
     st.sidebar.header("Model Selection")
 
@@ -263,17 +272,41 @@ def main():
 
     user_inputs = get_user_inputs(df)
 
+    result_container = st.container()
+
     if st.sidebar.button("Predict Diagnosis"):
 
         prob, pred = predict(model, user_inputs)
 
-        show_prediction(prob, pred)
+        with result_container:
+            show_prediction(prob, pred)
+    else:
 
-    show_metrics()
+        with result_container:
+            st.subheader("Diagnosis result")
+            st.info(
+                "Adjust the tumor measurements in the sidebar and click **Predict Diagnosis** "
+                "to see the model's assessment."
+            )
 
-    show_confusion(model, df)
+    st.markdown("---")
+    st.markdown("### Model & data insights")
 
-    show_roc(df)
+    tab_perf, tab_cm, tab_roc, tab_about = st.tabs(
+        ["Performance table", "Confusion matrix", "ROC curves", "About & dataset"]
+    )
+
+    with tab_perf:
+        show_metrics()
+
+    with tab_cm:
+        show_confusion(model, df)
+
+    with tab_roc:
+        show_roc(df)
+
+    with tab_about:
+        show_about()
 
 
 if __name__ == "__main__":
